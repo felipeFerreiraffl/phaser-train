@@ -16,26 +16,106 @@ class Scene2 extends Phaser.Scene {
     // this.background = this.add.image(0, 0, "background");
 
     // Repete a textura do background
-    this.background = this.add.tileSprite(0, 0, config.width, config.height, "background");
+    this.background = this.add.tileSprite(
+      0,
+      0,
+      config.width,
+      config.height,
+      "background"
+    );
 
     // Seta a origem da imagem no canto superior esquerdo
     this.background.setOrigin(0, 0);
 
-    this.ship1 = this.add.image(
+    // Criação de texto (posição x, posição y, texto)
+    // Usa-se {} para estilos específicos
+    this.add.text(20, 20, "Jogando!", { font: "20px Arial", fill: "green" });
+
+    // this.ship1 = this.add.image(
+    //   config.width / 2 - 50,
+    //   config.height / 2,
+    //   "ship1"
+    // );
+    // this.ship2 = this.add.image(config.width / 2, config.height / 2, "ship2");
+    // this.ship3 = this.add.image(
+    //   config.width / 2 + 50,
+    //   config.height / 2,
+    //   "ship3"
+    // );
+
+    // Adição de sprites
+    this.ship1 = this.add.sprite(
       config.width / 2 - 50,
       config.height / 2,
       "ship1"
     );
-    this.ship2 = this.add.image(config.width / 2, config.height / 2, "ship2");
-    this.ship3 = this.add.image(
+    this.ship2 = this.add.sprite(config.width / 2, config.height / 2, "ship2");
+    this.ship3 = this.add.sprite(
       config.width / 2 + 50,
       config.height / 2,
       "ship3"
     );
 
-    // Criação de texto (posição x, posição y, texto)
-    // Usa-se {} para estilos específicos
-    this.add.text(20, 20, "Jogando!", { font: "20px Arial", fill: "green" });
+    // Inicia a animação
+    this.ship1.play("ship1_anim");
+    this.ship2.play("ship2_anim");
+    this.ship3.play("ship3_anim");
+
+    // Destrói o objeto quando clicado
+    // gameobjectdown define o evento de click
+    // this.DestroyShip é uma função de callback
+    // this é o escopo da função
+    this.input.on("gameobjectdown", this.destroyShip, this);
+
+    // Torna os objetos interativos
+    this.ship1.setInteractive();
+    this.ship2.setInteractive();
+    this.ship3.setInteractive();
+
+    // Grupo de power-ups (sprites)
+    this.powerUps = this.physics.add.group();
+
+    // Laço for para guardar e criar os objetos no grupo
+    var maxObjects = 4;
+    for (var i = 0; i <= maxObjects; i++) {
+      var powerUp = this.physics.add.sprite(16, 16, "power-up");
+      this.powerUps.add(powerUp); // Adiciona os sprites
+      powerUp.setRandomPosition(0, 0, game.config.width, game.config.width);
+
+      // Cria animações aleatórias com em 50% de chance de ser vermelho ou cinza
+      if (Math.random() > 0.5) {
+        powerUp.play("red");
+      } else {
+        powerUp.play("gray");
+      }
+
+      // Adiciona velocidade ao sprite
+      powerUp.setVelocity(100, 100);
+
+      // Adiciona uma "parede" para que o sprite não saia da tela
+      powerUp.setCollideWorldBounds(true);
+
+      // Faz o objeto quicar quando chega na parede
+      powerUp.setBounce(1);
+    }
+
+    this.player = this.physics.add.sprite(
+      config.width / 2 - 8,
+      config.height - 64,
+      "player"
+    );
+    this.player.play("thrust");
+    // Adiciona eventos quando aperta os botões das setas
+    this.cursorKeys = this.input.keyboard.createCursorKeys();
+
+    // Faz o player não sair da tela ao chegar na parede
+    this.player.setCollideWorldBounds(true);
+
+    // Adiciona um keyboard com o espaço
+    this.spacebar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+    // Adiciona os projéteis no grupo 
+    this.projectiles = this.add.group();
   }
 
   // Loop contínuo, ou seja, coisas que rodarão constantemente
@@ -55,9 +135,23 @@ class Scene2 extends Phaser.Scene {
 
     // Diminui a posição da textura da imagem
     this.background.tilePositionY -= 0.5;
+
+    // Controla o jogador
+    this.movePlayerManager();
+
+    // Ativa o evento do click do espaço
+    if (Phaser.Input.Keyboard.JustDown(this.spacebar)) {
+      this.shootBeam();
+    }
+
+    // Faz o método de destruir o projétil para cada um atirado
+    for (var i = 0; i < this.projectiles.getChildren().length; i++) {
+      var beam = this.projectiles.getChildren()[i];
+      beam.update();
+    }
   }
 
-  // * Funções *
+  // * Funções extras *
 
   // Move as naves no eixo Y, retornando no início ao chegar no final
   moveShip(ship, speed) {
@@ -65,14 +159,38 @@ class Scene2 extends Phaser.Scene {
 
     // Caso a nova ultrapasse o final, ele ativa o reset
     if (ship.y > config.height) {
-        this.resetShipPos(ship);
+      this.resetShipPos(ship);
     }
   }
 
-  // Reseta as naves à posição y0 e coloca as naves em posições x aleatórias 
+  // Reseta as naves à posição y0 e coloca as naves em posições x aleatórias
   resetShipPos(ship) {
     ship.y = 0;
     var randomX = Phaser.Math.Between(0, config.width);
     ship.x = randomX;
-  };
+  }
+
+  // Destrói os ships ao serem clicados
+  destroyShip(pointer, gameObject) {
+    gameObject.setTexture("explosion"); // Muda para o sprite de explosão quando clicado
+    gameObject.play("explosion_anim"); // Gera a animação de explosão
+  }
+
+  // Movimentos do jogador
+  movePlayerManager() {
+    if (this.cursorKeys.left.isDown) {
+      this.player.setVelocityX(-gameSettings.playerSpeed); // Move para a esquerda
+    } else if (this.cursorKeys.right.isDown) {
+      this.player.setVelocityX(gameSettings.playerSpeed); // Move para a direita
+    } else if (this.cursorKeys.up.isDown) {
+      this.player.setVelocityY(-gameSettings.playerSpeed); // Move para a baixo
+    } else if (this.cursorKeys.down.isDown) {
+      this.player.setVelocityY(gameSettings.playerSpeed); // Move para a cima
+    }
+  }
+
+  // Ativa o tiro
+  shootBeam() {
+    var beam = new Beam(this);
+  }
 }
