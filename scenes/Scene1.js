@@ -53,6 +53,9 @@ class Scene1 extends Phaser.Scene {
       frameWidth: 16,
       frameHeight: 16,
     });
+
+    // Carrega um bitmap de fontes
+    this.load.bitmapFont("pixelFont", "assets/font/font.png", "assets/font/font.xml");
   }
 
   // Adiciona objetos ao jogo

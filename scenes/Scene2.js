@@ -29,7 +29,7 @@ class Scene2 extends Phaser.Scene {
 
     // Criação de texto (posição x, posição y, texto)
     // Usa-se {} para estilos específicos
-    this.add.text(20, 20, "Jogando!", { font: "20px Arial", fill: "green" });
+    // this.add.text(20, 20, "Jogando!", { font: "20px Arial", fill: "green" });
 
     // this.ship1 = this.add.image(
     //   config.width / 2 - 50,
@@ -135,6 +135,30 @@ class Scene2 extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.enemies, this.hurtPLayer, null, this);
 
     this.physics.add.overlap(this.projectiles, this.enemies, this.hitEnemy, null, this);
+
+    // Background da pontuação
+    // Adiciona uma forma com cor preta
+    var graphics = this.add.graphics();
+    graphics.fillStyle("#000", 1);
+
+    // Desenha um polígono por coordenadas
+    graphics.beginPath();
+    graphics.moveTo(0, 0);
+    graphics.lineTo(config.width, 0);
+    graphics.lineTo(config.width, 20);
+    graphics.lineTo(0, 20);
+    graphics.lineTo(0, 0);
+
+    // Fecha o caminho e preenche a forma
+    graphics.closePath();
+    graphics.fillPath();
+
+    // Inicia a pontuação em 0
+    this.score = 0;
+
+    // Criando o texto com bitmap (x, y, id, texto, tamanho da fonte)
+    this.scoreLabel = this.add.bitmapText(10, 5, "pixelFont", "SCORE ", 16);
+
   }
 
   // Loop contínuo, ou seja, coisas que rodarão constantemente
@@ -230,5 +254,20 @@ class Scene2 extends Phaser.Scene {
   hitEnemy(projectile, enemy) {
     projectile.destroy();
     this.resetShipPos(enemy);
+
+    // Aumenta o número baseado em quantos inimigos você derrota
+    this.score += 15;
+    var scoreFormatted = this.zeroPad(this.score, 6);
+    this.scoreLabel.text = "SCORE " + scoreFormatted;
+  }
+
+  // Adiciona quantidade de zeros
+  zeroPad(number, size) {
+    var stringNumber = String(number);
+    while(stringNumber.length < (size || 2)) {
+      stringNumber = "0" + stringNumber;
+    }
+
+    return stringNumber;
   }
 }
