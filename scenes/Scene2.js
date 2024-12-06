@@ -56,6 +56,12 @@ class Scene2 extends Phaser.Scene {
       "ship3"
     );
 
+    // Adição de sprites dentro de um grupo
+    this.enemies = this.physics.add.group();
+    this.enemies.add(this.ship1);
+    this.enemies.add(this.ship2);
+    this.enemies.add(this.ship3);
+
     // Inicia a animação
     this.ship1.play("ship1_anim");
     this.ship2.play("ship2_anim");
@@ -116,6 +122,19 @@ class Scene2 extends Phaser.Scene {
 
     // Adiciona os projéteis no grupo 
     this.projectiles = this.add.group();
+
+    // Adiciona colisão entre os projéteis e os power-ups (objeto1, objeto2)
+    this.physics.add.collider(this.projectiles, this.powerUps, function(projectile, powerUp) {
+      projectile.destroy(); // Destrói o projétil quando toca no power-up
+    });
+
+    // Adiciona um overlap (apenas toca, sem simular a física)
+    // (objeto1, objeto2, função de callback, escope da função)
+    this.physics.add.overlap(this.player, this.powerUps, this.pickPowerUp, null, this);
+
+    this.physics.add.overlap(this.player, this.enemies, this.hurtPLayer, null, this);
+
+    this.physics.add.overlap(this.projectiles, this.enemies, this.hitEnemy, null, this);
   }
 
   // Loop contínuo, ou seja, coisas que rodarão constantemente
@@ -192,5 +211,24 @@ class Scene2 extends Phaser.Scene {
   // Ativa o tiro
   shootBeam() {
     var beam = new Beam(this);
+  }
+
+  // Coleta os power-ups
+  pickPowerUp(player, powerUp) {
+    // Desabilita o objeto
+    powerUp.disableBody(true, true); // Deixa inativo e esconde o objeto
+  }
+
+  // Ativa o overlap quando o player toca no inimigo
+  hurtPLayer(player, enemy) {
+    this.resetShipPos(enemy); // Reseta a posição do inimigo
+    player.x = config.width / 2 - 8;
+    player.y = config.height - 64;
+  }
+
+  // Ativa o overlap dos tiros aos inimigos
+  hitEnemy(projectile, enemy) {
+    projectile.destroy();
+    this.resetShipPos(enemy);
   }
 }
