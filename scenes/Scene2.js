@@ -118,23 +118,47 @@ class Scene2 extends Phaser.Scene {
     this.player.setCollideWorldBounds(true);
 
     // Adiciona um keyboard com o espaço
-    this.spacebar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.spacebar = this.input.keyboard.addKey(
+      Phaser.Input.Keyboard.KeyCodes.SPACE
+    );
 
-    // Adiciona os projéteis no grupo 
+    // Adiciona os projéteis no grupo
     this.projectiles = this.add.group();
 
     // Adiciona colisão entre os projéteis e os power-ups (objeto1, objeto2)
-    this.physics.add.collider(this.projectiles, this.powerUps, function(projectile, powerUp) {
-      projectile.destroy(); // Destrói o projétil quando toca no power-up
-    });
+    this.physics.add.collider(
+      this.projectiles,
+      this.powerUps,
+      function (projectile, powerUp) {
+        projectile.destroy(); // Destrói o projétil quando toca no power-up
+      }
+    );
 
     // Adiciona um overlap (apenas toca, sem simular a física)
     // (objeto1, objeto2, função de callback, escope da função)
-    this.physics.add.overlap(this.player, this.powerUps, this.pickPowerUp, null, this);
+    this.physics.add.overlap(
+      this.player,
+      this.powerUps,
+      this.pickPowerUp,
+      null,
+      this
+    );
 
-    this.physics.add.overlap(this.player, this.enemies, this.hurtPLayer, null, this);
+    this.physics.add.overlap(
+      this.player,
+      this.enemies,
+      this.hurtPLayer,
+      null,
+      this
+    );
 
-    this.physics.add.overlap(this.projectiles, this.enemies, this.hitEnemy, null, this);
+    this.physics.add.overlap(
+      this.projectiles,
+      this.enemies,
+      this.hitEnemy,
+      null,
+      this
+    );
 
     // Background da pontuação
     // Adiciona uma forma com cor preta
@@ -158,7 +182,6 @@ class Scene2 extends Phaser.Scene {
 
     // Criando o texto com bitmap (x, y, id, texto, tamanho da fonte)
     this.scoreLabel = this.add.bitmapText(10, 5, "pixelFont", "SCORE ", 16);
-
   }
 
   // Loop contínuo, ou seja, coisas que rodarão constantemente
@@ -184,7 +207,9 @@ class Scene2 extends Phaser.Scene {
 
     // Ativa o evento do click do espaço
     if (Phaser.Input.Keyboard.JustDown(this.spacebar)) {
-      this.shootBeam();
+      if (this.player.active) {
+        this.shootBeam();
+      }
     }
 
     // Faz o método de destruir o projétil para cada um atirado
@@ -246,12 +271,32 @@ class Scene2 extends Phaser.Scene {
   // Ativa o overlap quando o player toca no inimigo
   hurtPLayer(player, enemy) {
     this.resetShipPos(enemy); // Reseta a posição do inimigo
-    player.x = config.width / 2 - 8;
-    player.y = config.height - 64;
+
+    // Verifica se o jagador está em fase de reset
+    if (this.player.alpha < 1) {
+      return;
+    }
+
+    var explosion = new Explosion(this, player.x, player.y);
+
+    player.disableBody(true, true);
+
+    // Adiciona um tempo até o player resetar
+    this.time.addEvent({
+      delay: 1500, // Tempo do reset em ms
+      callback: this.resetPlayer(), // Chamada da função
+      calbackScope: this,
+      loop: false,
+    });
+
+    // this.resetPlayer();
   }
 
   // Ativa o overlap dos tiros aos inimigos
   hitEnemy(projectile, enemy) {
+    // Cria uma instância de explosão quando acerta um inimigo
+    var explosion = new Explosion(this, enemy.x, enemy.y);
+
     projectile.destroy();
     this.resetShipPos(enemy);
 
@@ -264,10 +309,33 @@ class Scene2 extends Phaser.Scene {
   // Adiciona quantidade de zeros
   zeroPad(number, size) {
     var stringNumber = String(number);
-    while(stringNumber.length < (size || 2)) {
+    while (stringNumber.length < (size || 2)) {
       stringNumber = "0" + stringNumber;
     }
 
     return stringNumber;
+  }
+
+  // Reseta o jogador na posição inicial
+  resetPlayer() {
+    var x = config.width / 2 - 8;
+    var y = config.height + 64;
+    this.player.enableBody(true, x, y, true, true);
+
+    // Deixa o player invencível após resetar por um tempo
+    this.player.alpha = 0.5;
+
+    // Volta ao estado original do player
+    var tween = this.tweens.add({
+      targets: this.player,
+      y: config.height - 64, // O jogador é jogado para cima após morrer
+      ease: "Power1",
+      duration: 1800,
+      repeat: 0,
+      onComplete: function () {
+        this.player.alpha = 1; // Retorna a trnasparência original após o tween
+      },
+      callbackScope: this,
+    });
   }
 }
